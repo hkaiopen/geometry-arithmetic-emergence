@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three-Layer Geometry · v9</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: radial-gradient(circle at 50% 40%, #0e1220 0%, #05070d 100%);
+      color: #e8eaf2;
+      font-family: -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    canvas { display: block; position: fixed; inset: 0; z-index: 1; }
+
+    /* ---------- Title ---------- */
+    #title {
+      position: fixed; top: 22px; left: 50%; transform: translateX(-50%);
+      text-align: center; z-index: 10; pointer-events: none;
+    }
+    #title h1 {
+      font-size: 17px; font-weight: 500; letter-spacing: 1.2px;
+      color: #f0f2fa;
+    }
+    #title p {
+      font-size: 11px; margin-top: 6px; letter-spacing: 0.4px;
+      color: #7f8ba3;
+    }
+
+    /* ---------- Shared panel style ---------- */
+    .panel {
+      position: fixed; z-index: 10;
+      background: rgba(15, 20, 35, 0.72);
+      border: 1px solid rgba(120, 140, 180, 0.18);
+      border-radius: 10px;
+      padding: 13px 15px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      font-size: 11px;
+      line-height: 1.5;
+      width: 236px;
+    }
+    .panel h3 {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: #7f8ba3; margin-bottom: 10px;
+      border-bottom: 1px solid rgba(120, 140, 180, 0.15);
+      padding-bottom: 6px;
+    }
+
+    /* ---------- π panel (top-right) ---------- */
+    #pi-panel { top: 78px; right: 20px; }
+    .pi-item { margin-bottom: 11px; }
+    .pi-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.6px;
+      color: #aabbdd; margin-bottom: 3px;
+    }
+    .pi-formula {
+      font-family: "SF Mono", Monaco, "Courier New", monospace;
+      font-size: 10.5px; color: #dde3ee; margin: 2px 0;
+    }
+    .pi-result {
+      font-family: "SF Mono", Monaco, monospace;
+      font-size: 10.5px; color: #ffd54f; margin: 2px 0;
+    }
+    .pi-note {
+      font-size: 9.5px; color: #66708a;
+      font-style: italic; margin-top: 3px;
+    }
+    .pi-common {
+      margin-top: 9px; padding-top: 8px;
+      border-top: 1px solid rgba(120, 140, 180, 0.15);
+      font-size: 10px; color: #8892a8; font-style: italic;
+    }
+
+    /* ---------- Duality panel (top-left) ---------- */
+    #duality-panel { top: 78px; left: 20px; }
+    .dual-row {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .dual-side { flex: 1; }
+    .dual-header {
+      font-size: 9px; color: #7f8ba3;
+      letter-spacing: 0.8px; text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .dual-item {
+      font-family: "SF Mono", Monaco, monospace;
+      font-size: 11px; color: #dde3ee; margin: 3px 0;
+    }
+    .dual-arrow {
+      font-size: 15px; color: #ff6b9d; opacity: 0.8;
+    }
+    .dual-note {
+      margin-top: 9px; padding-top: 8px;
+      border-top: 1px solid rgba(120, 140, 180, 0.15);
+      font-size: 10px; color: #8892a8; font-style: italic;
+    }
+
+    /* ---------- Layer labels (bottom) ---------- */
+    #labels {
+      position: fixed; bottom: 118px; left: 0; right: 0;
+      display: flex; justify-content: space-around;
+      pointer-events: none; z-index: 5;
+      padding: 0 60px;
+    }
+    .label {
+      text-align: center; max-width: 200px;
+      transition: opacity 0.35s ease;
+    }
+    .label .name {
+      font-size: 13px; font-weight: 600; letter-spacing: 0.5px;
+    }
+    .label .meta {
+      font-size: 10.5px; opacity: 0.72; margin-top: 3px;
+      font-family: "SF Mono", Monaco, monospace;
+    }
+    .label .role {
+      font-size: 10px; opacity: 0.55; margin-top: 2px;
+      letter-spacing: 0.3px; font-style: italic;
+    }
+    .c-sphere { color: #4fc3f7; }
+    .c-hyper  { color: #ff6b9d; }
+    .c-euclid { color: #ffd54f; }
+
+    /* ---------- Wick rotation slider (bottom-center) ---------- */
+    #slider-container {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      z-index: 10; width: 400px; max-width: calc(100vw - 40px);
+      background: rgba(15, 20, 35, 0.78);
+      border: 1px solid rgba(120, 140, 180, 0.18);
+      border-radius: 10px;
+      padding: 11px 18px 13px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    #slider-container .title {
+      text-align: center; font-size: 10.5px;
+      color: #aabbdd; margin-bottom: 7px;
+      letter-spacing: 0.6px;
+    }
+    #slider-container .title .op {
+      color: #ff6b9d; font-weight: 600;
+      font-family: "SF Mono", Monaco, monospace;
+    }
+    #slider-container .label-row {
+      display: flex; justify-content: space-between;
+      font-size: 10px; color: #7f8ba3;
+      margin-bottom: 6px; letter-spacing: 0.4px;
+      transition: color 0.3s;
+    }
+    #slider-container .label-row .active {
+      color: #dde3ee; font-weight: 600;
+    }
+    #slider-container .label-row .active.left  { color: #4fc3f7; }
+    #slider-container .label-row .active.right { color: #ff6b9d; }
+
+    input[type="range"] {
+      width: 100%;
+      -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 2px;
+      background: linear-gradient(to right,
+        #4fc3f7 0%, #7e6ba0 50%, #ff6b9d 100%);
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #ffffff; cursor: pointer;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.55);
+      transition: transform 0.15s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #ffffff; cursor: pointer; border: none;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.55);
+    }
+
+    /* ---------- Hint (bottom-right) ---------- */
+    #hint {
+      position: fixed; bottom: 26px; right: 24px;
+      font-size: 10px; color: #556074;
+      letter-spacing: 0.5px; z-index: 10;
+      pointer-events: none;
+    }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 900px) {
+      #pi-panel, #duality-panel { display: none; }
+      #labels { padding: 0 20px; bottom: 130px; }
+      #hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="c"></canvas>
+
+  <div id="title">
+    <h1>Sphere → Hyperbolic → Euclidean</h1>
+    <p>Three-layer geometry · Information dynamics · v9</p>
+  </div>
+
+  <!-- π panel -->
+  <aside class="panel" id="pi-panel">
+    <h3>π across the layers</h3>
+    <div class="pi-item">
+      <div class="pi-label">Geometric π</div>
+      <div class="pi-formula">N(T) ~ Area·T² / (4π)</div>
+      <div class="pi-result">→ T² / 12</div>
+      <div class="pi-note">cancels — Weyl law</div>
+    </div>
+    <div class="pi-item">
+      <div class="pi-label">Arithmetic π</div>
+      <div class="pi-formula">ζ(2) = π² / 6</div>
+      <div class="pi-result">∫ e^(−x²) dx = √π</div>
+      <div class="pi-note">non-eliminable — Fourier self-duality</div>
+    </div>
+    <div class="pi-common">
+      Both from the circle / tangent circle
+    </div>
+  </aside>
+
+  <!-- Duality panel -->
+  <aside class="panel" id="duality-panel">
+    <h3>Spectral ↔ Object duality</h3>
+    <div class="dual-row">
+      <div class="dual-side">
+        <div class="dual-header">Spectral</div>
+        <div class="dual-item">{ t_j }</div>
+        <div class="dual-item">{ ρ }</div>
+      </div>
+      <div class="dual-arrow">↔</div>
+      <div class="dual-side">
+        <div class="dual-header">Object</div>
+        <div class="dual-item">{ ℓ(γ) }</div>
+        <div class="dual-item">{ log p }</div>
+      </div>
+    </div>
+    <div class="dual-note">
+      Invariant across all three layers
+    </div>
+  </aside>
+
+  <!-- Layer labels -->
+  <div id="labels">
+    <div class="label c-sphere" id="label-s">
+      <div class="name">S² Sphere</div>
+      <div class="meta">K = +1/4 · h = 0</div>
+      <div class="role">real phase · storage</div>
+    </div>
+    <div class="label c-hyper" id="label-h">
+      <div class="name">H² Hyperboloid</div>
+      <div class="meta">K = −1/4 · h &gt; 0</div>
+      <div class="role">imaginary phase · generation</div>
+    </div>
+    <div class="label c-euclid">
+      <div class="name">E² Euclidean</div>
+      <div class="meta">K = 0 · h = 0</div>
+      <div class="role">critical phase · crystallization</div>
+    </div>
+  </div>
+
+  <!-- Wick rotation slider -->
+  <div id="slider-container">
+    <div class="title">
+      Wick rotation <span class="op">R ↦ iR</span>
+    </div>
+    <div class="label-row">
+      <span id="label-left" class="active left">real · θ = 0</span>
+      <span id="label-right">imaginary · θ = π/2</span>
+    </div>
+    <input type="range" id="theta-slider"
+           min="0" max="1" step="0.001" value="0" />
+  </div>
+
+  <div id="hint">drag to rotate · scroll to zoom</div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+  // ============================================================
+  // Renderer / scene / camera
+  // ============================================================
+  const canvas = document.getElementById('c');
+  const renderer = new THREE.WebGLRenderer({
+    canvas, antialias: true, alpha: true
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene = new THREE.Scene();
+
+  const camera = new THREE.PerspectiveCamera(
+    45, window.innerWidth / window.innerHeight, 0.1, 200
+  );
+  camera.position.set(0, 1.8, 8.5);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 4;
+  controls.maxDistance = 22;
+  controls.target.set(0, 0, 0);
+
+  // ============================================================
+  // Lights
+  // ============================================================
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
+  keyLight.position.set(5, 8, 6);
+  scene.add(keyLight);
+
+  const rimLight = new THREE.DirectionalLight(0x88aaff, 0.55);
+  rimLight.position.set(-5, -3, -5);
+  scene.add(rimLight);
+
+  // ============================================================
+  // Layout
+  // ============================================================
+  const X_LEFT  = -2.85;   // S² / H² crossfade position
+  const X_RIGHT =  2.85;   // E² plane position
+
+  // ============================================================
+  // Layer 1: Sphere S²  (real phase · storage)
+  // ============================================================
+  const R_SPHERE = 1.25;
+
+  const sphereMat = new THREE.MeshPhysicalMaterial({
+    color: 0x4fc3f7,
+    metalness: 0.15,
+    roughness: 0.35,
+    clearcoat: 0.65,
+    transparent: true,
+    opacity: 1.0,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  const sphereMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(R_SPHERE, 64, 48),
+    sphereMat
+  );
+  sphereMesh.position.x = X_LEFT;
+  scene.add(sphereMesh);
+
+  const sphereWireMat = new THREE.MeshBasicMaterial({
+    color: 0x4fc3f7, wireframe: true,
+    transparent: true, opacity: 0.10,
+    depthWrite: false
+  });
+  const sphereWire = new THREE.Mesh(
+    new THREE.SphereGeometry(R_SPHERE * 1.004, 24, 16),
+    sphereWireMat
+  );
+  sphereWire.position.x = X_LEFT;
+  scene.add(sphereWire);
+
+  // ============================================================
+  // Layer 2: Hyperboloid H²  (imaginary phase · generation)
+  // ============================================================
+  function makeHyperboloid(R, uMax, uSegs, vSegs) {
+    const positions = [];
+    const indices = [];
+
+    for (let i = 0; i <= uSegs; i++) {
+      const u  = (i / uSegs) * uMax;
+      const sh = Math.sinh(u);
+      const ch = Math.cosh(u);
+      for (let j = 0; j <= vSegs; j++) {
+        const v = (j / vSegs) * Math.PI * 2;
+        positions.push(
+          R * sh * Math.cos(v),
+          R * ch,
+          R * sh * Math.sin(v)
+        );
+      }
+    }
+    for (let i = 0; i < uSegs; i++) {
+      for (let j = 0; j < vSegs; j++) {
+        const a = i * (vSegs + 1) + j;
+        const b = a + (vSegs + 1);
+        indices.push(a, b, a + 1, b, b + 1, a + 1);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(positions, 3)
+    );
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  const R_HYPER = 0.72;
+  const U_MAX   = 1.65;
+  const HYPER_Y_OFFSET = -R_HYPER * (1 + Math.cosh(U_MAX)) / 2;
+
+  const hyperMat = new THREE.MeshPhysicalMaterial({
+    color: 0xff6b9d,
+    metalness: 0.15,
+    roughness: 0.35,
+    clearcoat: 0.65,
+    transparent: true,
+    opacity: 0.0,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  const hyperMesh = new THREE.Mesh(
+    makeHyperboloid(R_HYPER, U_MAX, 48, 64),
+    hyperMat
+  );
+  hyperMesh.position.x = X_LEFT;
+  hyperMesh.position.y = HYPER_Y_OFFSET;
+  scene.add(hyperMesh);
+
+  const hyperWireMat = new THREE.MeshBasicMaterial({
+    color: 0xff6b9d, wireframe: true,
+    transparent: true, opacity: 0.0,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  const hyperWire = new THREE.Mesh(
+    makeHyperboloid(R_HYPER * 1.004, U_MAX, 24, 32),
+    hyperWireMat
+  );
+  hyperWire.position.x = X_LEFT;
+  hyperWire.position.y = HYPER_Y_OFFSET;
+  scene.add(hyperWire);
+
+  // ============================================================
+  // Layer 3: Euclidean plane E²  (critical phase · crystallization)
+  // ============================================================
+  const euclidGroup = new THREE.Group();
+  euclidGroup.position.x = X_RIGHT;
+
+  // Faint filled disk under the grid to give a sense of "plane"
+  const diskMat = new THREE.MeshBasicMaterial({
+    color: 0xffd54f, transparent: true, opacity: 0.045,
+    side: THREE.DoubleSide, depthWrite: false
+  });
+  const disk = new THREE.Mesh(
+    new THREE.CircleGeometry(1.85, 64),
+    diskMat
+  );
+  disk.rotation.x = -Math.PI / 2;
+  euclidGroup.add(disk);
+
+  // Grid (horizontal, XZ plane by default in GridHelper)
+  const grid = new THREE.GridHelper(
+    3.6, 18, 0xffd54f, 0x886a20
+  );
+  grid.material.transparent = true;
+  grid.material.opacity = 0.42;
+  grid.material.depthWrite = false;
+  euclidGroup.add(grid);
+
+  // Glowing dots — "crystallized arithmetic data" (primes)
+  const dotGeo = new THREE.SphereGeometry(0.048, 10, 10);
+  const dotMat = new THREE.MeshBasicMaterial({
+    color: 0xffd54f, transparent: true, opacity: 0.95
+  });
+  const primeSpots = [
+    [ 1,  0,  0], [-1,  0,  0], [ 0,  0,  1], [ 0,  0, -1],
+    [ 0.7, 0, 0.7], [-0.7, 0, 0.7], [ 0.7, 0, -0.7], [-0.7, 0, -0.7],
+    [ 1.4, 0, 0], [-1.4, 0, 0], [ 0, 0, 1.4], [ 0, 0, -1.4],
+    [ 1.4, 0, 1.4], [-1.4, 0, 1.4], [ 1.4, 0, -1.4], [-1.4, 0, -1.4],
+  ];
+  for (const [x, y, z] of primeSpots) {
+    const dot = new THREE.Mesh(dotGeo, dotMat);
+    dot.position.set(x, y, z);
+    euclidGroup.add(dot);
+  }
+
+  scene.add(euclidGroup);
+
+  // ============================================================
+  // Arrow H² → E²  (cusp / Fourier–Hecke)
+  // ============================================================
+  function makeArrow(x1, x2, y, color, opacity = 0.55) {
+    const g = new THREE.Group();
+    const len = x2 - x1;
+
+    const shaft = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.010, 0.010, len - 0.14, 8),
+      new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity,
+        depthWrite: false
+      })
+    );
+    shaft.rotation.z = Math.PI / 2;
+    shaft.position.set(x1 + (len - 0.14) / 2, y, 0);
+    g.add(shaft);
+
+    const head = new THREE.Mesh(
+      new THREE.ConeGeometry(0.055, 0.14, 12),
+      new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: opacity + 0.15,
+        depthWrite: false
+      })
+    );
+    head.rotation.z = -Math.PI / 2;
+    head.position.set(x2 - 0.07, y, 0);
+    g.add(head);
+
+    return g;
+  }
+
+  scene.add(makeArrow(
+    X_LEFT + 1.55, X_RIGHT - 1.55, 0.0, 0x7e6ba0, 0.45
+  ));
+
+  // ============================================================
+  // Slider interaction — Wick rotation crossfade
+  // ============================================================
+  const slider      = document.getElementById('theta-slider');
+  const labelLeft   = document.getElementById('label-left');
+  const labelRight  = document.getElementById('label-right');
+  const labelS      = document.getElementById('label-s');
+  const labelH      = document.getElementById('label-h');
+
+  let theta = 0;   // 0 = sphere, 1 = hyperboloid
+
+  function smoothstep(x) {
+    x = Math.max(0, Math.min(1, x));
+    return x * x * (3 - 2 * x);
+  }
+
+  function updateOpacity() {
+    const t = theta;
+
+    // Crossfade using smoothstep on each side
+    const fadeOut = smoothstep(1 - 2 * t);   // 1 -> 0
+    const fadeIn  = smoothstep(2 * t - 1);   // 0 -> 1
+
+    sphereMat.opacity     = fadeOut;
+    sphereWireMat.opacity = 0.10 * fadeOut;
+
+    hyperMat.opacity      = fadeIn;
+    hyperWireMat.opacity  = 0.10 * fadeIn;
+
+    // Label highlight
+    const realActive = theta < 0.5;
+    labelLeft.classList.toggle('active', realActive);
+    labelRight.classList.toggle('active', !realActive);
+
+    labelS.style.opacity = realActive ? '1' : '0.35';
+    labelH.style.opacity = realActive ? '0.35' : '1';
+  }
+
+  slider.addEventListener('input', (e) => {
+    theta = parseFloat(e.target.value);
+    updateOpacity();
+  });
+
+  updateOpacity();
+
+  // ============================================================
+  // Animation
+  // ============================================================
+  let t0 = performance.now();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const now = performance.now();
+    const elapsed = (now - t0) * 0.001;
+
+    // Continuous yaw on S² / H²
+    sphereMesh.rotation.y += 0.0025;
+    sphereWire.rotation.y += 0.0025;
+    hyperMesh.rotation.y  += 0.0025;
+    hyperWire.rotation.y  += 0.0025;
+
+    // Gentle sway on E² group
+    euclidGroup.rotation.y = Math.sin(elapsed * 0.30) * 0.12;
+
+    // Subtle pulsing on the crystallized dots
+    const pulse = 0.85 + 0.15 * Math.sin(elapsed * 1.8);
+    dotMat.opacity = 0.95 * pulse;
+
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // ============================================================
+  // Resize
+  // ============================================================
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+  </script>
+</body>
+</html>
